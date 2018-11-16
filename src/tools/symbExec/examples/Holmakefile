@@ -1,0 +1,23 @@
+INCLUDES = minimal ../../../core .. 
+
+
+OPTIONS = QUIT_ON_FAILURE
+
+EXTRA_CLEANS = selftest.exe
+
+
+ifdef POLY
+HOLHEAP = ../../lifter/HolBALifter-heap
+endif
+
+default: all
+
+minimal-test.exe: minimal-test.uo
+	$(HOLMOSMLC) -o $@ $<
+
+TARGETS = $(patsubst %-test.sml,%-test.exe,$(wildcard *-test.sml))
+
+all: $(TARGETS)
+.PHONY: all
+
+
