@@ -35,6 +35,7 @@ val SP_main = mk_var("SP_main", Type `:word64`);
 val SP_process = mk_var("SP_process", Type `:word64`);
 
 
+
 val bir_symb_init_env_def = Define `
     bir_symb_init_env 
         (R0, R1, R2, R3, R4, R5, R6, R7, 
@@ -58,9 +59,12 @@ val bir_symb_init_env_def = Define `
         |+ ("SP_process", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 ^SP_process))))
         )
     `;
-(*
-EVAL ``bir_symb_init_env 
+
+
+
+
+val foo = EVAL  ``bir_symb_init_env
     (^R0, ^R1, ^R2, ^R3, ^R4, ^R5, ^R6, ^R7, ^R8, ^R9, ^R10, ^R11, ^R12, ^LR, ^SP_main,
      ^SP_process)``;
- *)
+
 val _ = export_theory ();

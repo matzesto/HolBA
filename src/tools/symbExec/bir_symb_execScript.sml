@@ -4,10 +4,9 @@ app load ["HolKernel", "Parse", "boolLib" ,"bossLib"];
 app load ["wordsTheory", "bitstringTheory"];
 app load ["bir_auxiliaryTheory", "bir_immTheory", "bir_valuesTheory"];
 app load ["bir_imm_expTheory", "bir_mem_expTheory",  "bir_symb_envTheory"];
-app load ["bir_programTheory", "bir_expTheory"];
+app load ["bir_programTheory", "bir_expTheory", "bir_envTheory"];
 app load ["llistTheory", "wordsLib"];
 *)
-
 
 open HolKernel Parse boolLib bossLib;
 open wordsTheory bitstringTheory;
@@ -16,9 +15,18 @@ open bir_imm_expTheory bir_mem_expTheory bir_envTheory;
 open bir_expTheory;
 open bir_programTheory;
 open llistTheory wordsLib;
+
+open bir_envTheory;
 open bir_symb_envTheory;
 
 val _ = new_theory "bir_symbexec";
+
+
+
+
+(* ------------------------------------------------------------------------- *)
+(* Registers                                                                 *)
+(* ------------------------------------------------------------------------- *)
 
 
 
@@ -37,10 +45,9 @@ val _ = new_theory "bir_symbexec";
  * *)
 val _ = Datatype `bir_symb_state_t = <|
   bsst_pc           : bir_programcounter_t; 
-  bsst_environ      : bir_symb_environment_t; (* Mapping Vars to Exps *)
+  bsst_environ      : bir_var_environment_t; (* Mapping Vars to Exps *)
   bsst_pred         : bir_exp_t; (* Potentially define own Datatype *)
   bsst_status       : bir_status_t;
- 
  |>`;
     
 
@@ -52,9 +59,9 @@ val _ = Datatype `bir_symb_state_t = <|
 
 
 (* Initially, Environment is empty and predicate set to True *)
-val bir_symb_state_init_def = Define `bir_symb_state_init p = <|
+val bir_symb_state_init_def = Define `bir_symb_state_init p env = <|
     bsst_pc         := bir_pc_first p;
-    bsst_environ    := bir_symb_empty_env;
+    bsst_environ    := env;
     bsst_pred       := BExp_Const (Imm1 1w);  (* Invent real Booleans later on *)
     bsst_status     := BST_Running |>`;
 
@@ -66,11 +73,11 @@ val bir_symb_state_set_failed_def = Define `
 
 
 (* ------------------------------------------------------------------------- *)
-(* Eval certain expressions                                                  *)
+(* Eval certain expressions  This is TODO                                    *)
 (* --------------------------------------------------------------------------*)
 
 val bir_symb_eval_label_exp_def = Define `
-    (bir_symb_eval_label_exp (Concrete imm) (env: bir_symb_environment_t) 
+    (bir_symb_eval_label_exp (Concrete imm) (env: bir_var__environment_t) 
         = SOME (BL_Address imm)) ∧
     (bir_symb_eval_label_exp (Symbolic exp) env = NONE)`; (* Tricky case *)
 
@@ -212,4 +219,5 @@ val bir_symb_exec_stmt_def = Define`
     (bir_symb_exec_stmt p (BStmtE (bst: bir_stmt_end_t)) st 
         = (bir_symb_exec_stmtE p bst st))
     `;
+
 val _ = export_theory();
