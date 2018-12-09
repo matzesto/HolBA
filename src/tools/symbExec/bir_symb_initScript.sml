@@ -27,7 +27,7 @@ open optionTheory;
 
 
 
-val _ = new_theory("bir_symbinit");
+val _ = new_theory "bir_symb_init";
 
 
 

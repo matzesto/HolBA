@@ -19,15 +19,7 @@ open llistTheory wordsLib;
 open bir_envTheory;
 open bir_symb_envTheory;
 
-val _ = new_theory "bir_symbexec";
-
-
-
-
-(* ------------------------------------------------------------------------- *)
-(* Registers                                                                 *)
-(* ------------------------------------------------------------------------- *)
-
+val _ = new_theory "bir_symb_exec";
 
 
 (* ------------------------------------------------------------------------- *)
@@ -46,12 +38,13 @@ val _ = new_theory "bir_symbexec";
 val _ = Datatype `bir_symb_state_t = <|
   bsst_pc           : bir_programcounter_t; 
   bsst_environ      : bir_var_environment_t; (* Mapping Vars to Exps *)
-  bsst_pred         : bir_exp_t; (* Potentially define own Datatype *)
+  bsst_pred         : bool; (* Path predicate *)
   bsst_status       : bir_status_t;
  |>`;
     
 
-
+val CONJ_def = Define `
+    CONJ a b = a ∧ b`;
 
 (* ------------------------------------------------------------------------- *)
 (* Symbolic State                                                            *)
@@ -62,7 +55,7 @@ val _ = Datatype `bir_symb_state_t = <|
 val bir_symb_state_init_def = Define `bir_symb_state_init p env = <|
     bsst_pc         := bir_pc_first p;
     bsst_environ    := env;
-    bsst_pred       := BExp_Const (Imm1 1w);  (* Invent real Booleans later on *)
+    bsst_pred       := T;  (* Invent real Booleans later on *)
     bsst_status     := BST_Running |>`;
 
 
@@ -70,22 +63,15 @@ val bir_symb_state_set_failed_def = Define `
     bir_symb_state_set_failed st = 
     st with bsst_status := BST_Failed`;
 
-
-
 (* ------------------------------------------------------------------------- *)
 (* Eval certain expressions  This is TODO                                    *)
-(* --------------------------------------------------------------------------*)
-
-val bir_symb_eval_label_exp_def = Define `
-    (bir_symb_eval_label_exp (Concrete imm) (env: bir_var__environment_t) 
-        = SOME (BL_Address imm)) ∧
-    (bir_symb_eval_label_exp (Symbolic exp) env = NONE)`; (* Tricky case *)
-
-
+(* However, should be mostly the same as concrete evaluation                 *)        
+(* ------------------------------------------------------------------------- *)
+(*
 val bir_symb_eval_exp_def = Define `
     (bir_symb_eval_exp (BExp_Const n) env = BVal_Imm n) /\
     
-    (bir_symb_eval_exp (BExp_Den v ) env = bir_symb_env_read v env) ∧
+    (bir_symb_eval_exp (BExp_Den v ) env = bir_env_read v env) ∧
     
     (bir_symb_eval_exp (BExp_Cast ct e ty) env = (
         bir_symb_eval_cast ct (bir_symb_eval e env) ty )) ∧
@@ -114,12 +100,19 @@ val bir_symb_eval_exp_def = Define `
     (bir_symb_eval_exp (BExp_Store mem_e a_e en v_e) env = 
         bir_symb_eval_store (bir_symb_eval_exp mem_e env) 
             (bir_symb_eval_exp a_e env) en (bir_symb_eval_exp v_e env))`;
-
+ *)
 (* ------------------------------------------------------------------------- *)
 (* Symbolic Execution Semantics                                              *)
 (* ------------------------------------------------------------------------- *)
 
-
+(* We can have symbolic label expressions, these are to be 
+ * "solved" with SAT solver and every possible solution to be considered *)
+val bir_symb_eval_label_exp_def = Define `
+    (bir_symb_eval_label_exp (BLE_Label l) env = SOME l) ∧
+    (bir_symb_eval_label_exp (BLE_Exp e) env = 
+        case bir_eval_exp e env of
+        | BVal_Imm i => SOME (BL_Address i)
+        | _ => NONE)`;
  
 (********************)
 (* Jumps/Halt       *)
@@ -137,7 +130,7 @@ val bir_symb_exec_stmt_jmp_to_label_def = Define`
 val bir_symb_exec_stmt_jmp_def = Define `
     bir_symb_exec_stmt_jmp 
         (p: 'a bir_program_t) (le: bir_label_exp_t) (st: bir_symb_state_t) = 
-    case bir_symb_eval_label_exp le st.bsst_environ of 
+    case bir_eval_label_exp le st.bsst_environ of 
     | NONE   => bir_symb_state_set_failed st 
     | SOME l => bir_symb_exec_stmt_jmp_to_label p l st`;
 
@@ -152,13 +145,18 @@ val bir_symb_exec_stmt_halt_def = Define `
  * TODO: rewrite with Roberto's method to solve conditional jump
  *)
 val bir_symb_exec_stmt_cjmp_def = Define `
-    bir_symb_exec_stmt_cjmp p ex l1 l2 (st: bir_symb_state_t) = 
-    let st_true     = bir_symb_exec_stmt_jmp p l1 st in
-    let st_false    = bir_symb_exec_stmt_jmp p l2 st in
-    [st_true with bsst_pred  := BExp_BinExp BIExp_And (st_true.bsst_pred)  ex;
-      st_false with bsst_pred := BExp_BinExp BIExp_And (st_false.bsst_pred) 
-                                    (BExp_UnaryExp BIExp_Not ex);
-    ]`;
+    bir_symb_exec_stmt_cjmp  p (BExp_Den (BVar reg BType_Bool)) l1 l2 st = 
+    case (bir_env_lookup reg st.bsst_environ) of 
+      SOME (ty, NONE)   => [bir_symb_state_set_failed st]
+    | SOME (ty, SOME v) => 
+        case (bir_dest_bool_val v) of 
+         SOME b => 
+          let st_true  = bir_symb_exec_stmt_jmp p l1 st in
+          let st_false = bir_symb_exec_stmt_jmp p l2 st in
+            [st_true  with bsst_pred := CONJ  st_true.bsst_pred b;
+             st_false with bsst_pred := CONJ st_false.bsst_pred (~b)]
+        | NONE =>  [bir_symb_state_set_failed st]
+    | NONE              => [bir_symb_state_set_failed st]`; 
 
 
 (* Execute "End" (Jump/Halt) Statement *)
@@ -169,12 +167,9 @@ val bir_symb_exec_stmtE_def = Define `
     (bir_symb_exec_stmtE p (BStmt_Halt ex) st = [bir_symb_exec_stmt_halt ex st])`;
 
 
-
-
 (********************)
 (* Declare / Assign *)
 (********************)
-
 
 (* *
  * only declare when unbound
@@ -202,6 +197,9 @@ val bir_symb_exec_stmt_assign_def = Define `
     | NOEN => st with bsst_status := BST_Failed
 `;
 
+(* Is there something interesting here? *)
+val bir_symb_exec_stmt_assert_def = Define `
+    bir_symb_exec_stmt_assert ex st = st`;
 
 (* Basic Statement execution *)
 val bir_symb_exec_stmtB_def = Define `
@@ -209,6 +207,8 @@ val bir_symb_exec_stmtB_def = Define `
         = bir_symb_exec_stmt_declare (bir_var_name v) (bir_var_type v) st) ∧
     (bir_symb_exec_stmtB (BStmt_Assign v ex) st 
         = bir_symb_exec_stmt_assign v ex st) ∧
+    (bir_symb_exec_stmtB (BStmt_Assert ex) st 
+        =  bir_symb_exec_stmt_assert ex st) ∧
     (* Ignore all other statement so far *)
     (bir_symb_exec_stmtB (_)  st  = st)`;
 
@@ -219,5 +219,12 @@ val bir_symb_exec_stmt_def = Define`
     (bir_symb_exec_stmt p (BStmtE (bst: bir_stmt_end_t)) st 
         = (bir_symb_exec_stmtE p bst st))
     `;
+
+
+(* ---------------------------------------------------- *)
+(* Execute a program                                    *)
+(* -----------------------------------------------------*)
+
+(* TODO: Execute each stmt in each BB *)
 
 val _ = export_theory();
