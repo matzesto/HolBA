@@ -227,4 +227,24 @@ val bir_symb_exec_stmt_def = Define`
 
 (* TODO: Execute each stmt in each BB *)
 
+
+val bir_symb_exec_stmtB_list_def = Define `
+    (bir_symb_exec_stmtB_list (p: 'a bir_program_t) (st: bir_symb_state_t)
+        [] = st) ∧
+    (bir_symb_exec_stmtB_list p st (stmt :: stmt_list) = 
+        bir_symb_exec_stmtB_list p (bir_symb_exec_stmtB stmt st) stmt_list)`;
+
+
+val bir_symb_exec_blk = Define `
+    (bir_symb_exec_blk 
+        (p: 'a bir_program_t) (blk: 'a bir_block_t) (st: bir_symb_state_t ) = 
+        bir_symb_exec_stmtE p (blk.bb_last_statement) 
+            (bir_symb_exec_stmtB_list p st (blk.bb_statements))
+    )`;
+        
+val bir_symb_exec_first_blk_def = Define`
+    (bir_symb_exec_first_blk (BirProgram (stmt_list : ('a bir_block_t) list)) (st:
+    bir_symb_state_t) = bir_symb_exec_blk (BirProgram stmt_list) (HD stmt_list)
+    st)`;
+
 val _ = export_theory();

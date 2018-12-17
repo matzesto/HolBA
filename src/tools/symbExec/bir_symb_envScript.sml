@@ -21,9 +21,12 @@ val bir_symb_init_env_def = Define`
     bir_symb_init_env
         (* Registers *)
         (R0, R1, R2, R3, R4, R5, R6, R7, 
-         R8, R9, R10, R11, R12, LR, SP_main, SP_process)
+         R8, R9, R10, R11, R12, LR, SP_EL0, SP_process)
         (* Flags *)
-        (ProcState_N, ProcState_Z, ProcState_C, ProcState_V) = 
+        (ProcState_N, ProcState_Z, ProcState_C, ProcState_V)
+        (* Memory *)
+        (ADDR, VAL)
+        = 
     BEnv (FEMPTY 
         |+ ("R0", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R0))))
         |+ ("R1", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R1))))
@@ -39,12 +42,14 @@ val bir_symb_init_env_def = Define`
         |+ ("R11", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R11))))
         |+ ("R12", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R12))))
         |+ ("LR", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 LR))))
-        |+ ("SP_main", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 SP_main))))
+        |+ ("SP_EL0", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 SP_EL0))))
         |+ ("SP_process", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 SP_process))))
         |+ ("ProcState_N", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_N))))
         |+ ("ProcState_Z", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_Z))))
         |+ ("ProcState_C", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_C))))
         |+ ("ProcState_V", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_V))))
+        |+ ("MEM", (BType_Mem Bit64 Bit8,  SOME (BVal_Mem 
+            (type_of_bir_imm (Imm64 ADDR)) (type_of_bir_imm (Imm8 VAL)) (K 0) )))
         )`;
 
 val _ = export_theory ();
