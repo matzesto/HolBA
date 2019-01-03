@@ -52,4 +52,26 @@ val bir_symb_init_env_def = Define`
             (type_of_bir_imm (Imm64 ADDR)) (type_of_bir_imm (Imm8 VAL)) (K 0) )))
         )`;
 
+
+(* -----------------------------------------------------*)
+(* Symbolic environment is the same as the concrete     *)
+(* However, we these functions ease the implemenetation *)
+(* ---------------------------------------------------- *)
+
+val fmap_update_replace_def = Define `
+    fmap_update_replace (map: 'a |-> 'b) (a,  b) = 
+    case (FLOOKUP map a) of 
+    | NONE  => FUPDATE map (a, b)
+    | SOME v => FUPDATE (map \\  a ) (a, b)`;
+
+val bir_symb_env_update_def = Define `
+    bir_symb_env_update varname vo ty (BEnv env) = 
+    BEnv (fmap_update_replace env (varname, (ty, vo)))`;
+
+val bir_symb_env_write_def = Define `
+    bir_symb_env_write v va env = 
+    if bir_env_check_type v env then 
+      SOME (bir_symb_env_update (bir_var_name v) (SOME va) (bir_var_type v) env)
+    else NONE`;
+
 val _ = export_theory ();

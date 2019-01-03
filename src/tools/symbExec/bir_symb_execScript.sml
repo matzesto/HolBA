@@ -16,8 +16,7 @@ open bir_expTheory;
 open bir_programTheory;
 open llistTheory wordsLib;
 
-open bir_envTheory;
-open bir_symb_envTheory;
+open bir_envTheory bir_symb_envTheory;
 
 val _ = new_theory "bir_symb_exec";
 
@@ -62,6 +61,10 @@ val bir_symb_state_init_def = Define `bir_symb_state_init p env = <|
 val bir_symb_state_set_failed_def = Define `
     bir_symb_state_set_failed st = 
     st with bsst_status := BST_Failed`;
+
+val bir_symb_state_is_terminated_def = Define `
+    bir_symb_state_is_terminated st = 
+        if st.bsst_status = BST_Running then F else T`;
 
 (* ------------------------------------------------------------------------- *)
 (* Eval certain expressions  This is TODO                                    *)
@@ -192,10 +195,9 @@ val bir_symb_exec_stmt_declare_def = Define `
  * Is this specified in BIL? *)
 val bir_symb_exec_stmt_assign_def = Define `
     bir_symb_exec_stmt_assign v ex st = 
-    case (bir_env_write v (bir_eval_exp ex st.bsst_environ) st.bsst_environ) of 
+    case (bir_symb_env_write v (bir_eval_exp ex st.bsst_environ) st.bsst_environ) of 
     | SOME env => (st with bsst_environ := env)
-    | NOEN => st with bsst_status := BST_Failed
-`;
+    | NONE => st with bsst_status := BST_Failed`;
 
 (* Is there something interesting here? *)
 val bir_symb_exec_stmt_assert_def = Define `
@@ -225,9 +227,7 @@ val bir_symb_exec_stmt_def = Define`
 (* Execute a program                                    *)
 (* -----------------------------------------------------*)
 
-(* TODO: Execute each stmt in each BB *)
-
-
+(* Execute a Basic Block  *)
 val bir_symb_exec_stmtB_list_def = Define `
     (bir_symb_exec_stmtB_list (p: 'a bir_program_t) (st: bir_symb_state_t)
         [] = st) ∧
@@ -235,7 +235,7 @@ val bir_symb_exec_stmtB_list_def = Define `
         bir_symb_exec_stmtB_list p (bir_symb_exec_stmtB stmt st) stmt_list)`;
 
 
-val bir_symb_exec_blk = Define `
+val bir_symb_exec_blk_def = Define `
     (bir_symb_exec_blk 
         (p: 'a bir_program_t) (blk: 'a bir_block_t) (st: bir_symb_state_t ) = 
         bir_symb_exec_stmtE p (blk.bb_last_statement) 
@@ -243,8 +243,68 @@ val bir_symb_exec_blk = Define `
     )`;
         
 val bir_symb_exec_first_blk_def = Define`
-    (bir_symb_exec_first_blk (BirProgram (stmt_list : ('a bir_block_t) list)) (st:
-    bir_symb_state_t) = bir_symb_exec_blk (BirProgram stmt_list) (HD stmt_list)
-    st)`;
+    (bir_symb_exec_first_blk 
+        (BirProgram (blk_list : ('a bir_block_t) list)) (st: bir_symb_state_t) = 
+        bir_symb_exec_blk (BirProgram blk_list) (HD blk_list) st)`;
+
+(* Execute each BB  in a program *)
+
+val bir_symb_exec_label_block_def = Define`
+    bir_symb_exec_label_block (p: 'a bir_program_t) (st: bir_symb_state_t) = 
+    case (bir_get_program_block_info_by_label p st.bsst_pc.bpc_label) of 
+    | NONE => [bir_symb_state_set_failed st] 
+    | SOME (_, blk) => bir_symb_exec_blk p blk st`;
+    
+
+(* We build something similar to a CFG where each node 
+ * is a sysmbolic state representing the execution of one BB
+ * Remark: Each BB has exactly 
+ * Zero (Leaf) , One (UnNode)  or Two (BinNode) children nodes *)
+val _ = Datatype `bir_symb_tree_t = 
+  | Leaf bir_symb_state_t 
+  | BinNode bir_symb_tree_t bir_symb_state_t bir_symb_tree_t
+  | UnNode bir_symb_tree_t bir_symb_state_t`;
+
+
+
+
+val bir_symb_exec_init_symb_tree_def = Define `
+    bir_symb_exec_init_symb_tree (st: bir_symb_state_t) 
+     = Leaf st`;
+
+
+
+(* only execute one node *)
+val bir_symb_exec_node_def = Define `
+    (bir_symb_exec_node (p: 'a bir_program_t) (Leaf st) = 
+        case st.bsst_status of 
+        | BST_Running => 
+            case (bir_symb_exec_label_block p st) of 
+            | [st'] => UnNode  (Leaf st') st
+            | [st'; st''] => 
+                BinNode (Leaf st') st (Leaf st'')
+            | _ => Leaf st (* Should not happen *)
+        | _ => Leaf st) /\
+    (bir_symb_exec_node p (BinNode ltree st rtree) = 
+        BinNode (bir_symb_exec_node p ltree) st (bir_symb_exec_node p rtree)) /\
+    (bir_symb_exec_node p (UnNode tree st) = 
+        UnNode (bir_symb_exec_node p tree) st)`;
+
+
+(* can't prove termination of this version that computes all branches! *)
+(*
+val bir_symb_exec_node_def = Define `
+    (bir_symb_exec_node (p: 'a bir_program_t) (Leaf st) = 
+        case st.bsst_status of 
+        | BST_Running => 
+            case (bir_symb_exec_label_block p st) of 
+            | [st'] => UnNode (bir_symb_exec_node p (Leaf st')) st
+            | [st'; st''] => 
+                BinNode (bir_symb_exec_node p (Leaf st')) st
+                (bir_symb_exec_node p (Leaf st''))
+            | _ => Leaf st (* Should not happen *)
+        | _ => Leaf st)`;
+            
+*)
 
 val _ = export_theory();

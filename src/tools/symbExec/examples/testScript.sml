@@ -10,6 +10,7 @@ open minimalBinaryTheory;
 open bir_symb_execTheory bir_symb_envTheory;
 open bir_valuesTheory;
 open bir_immTheory;
+open finite_mapTheory;
 
 val _ = new_theory "test";
 
@@ -43,7 +44,15 @@ val ADDR = mk_var("ADDR", Type`:word64`);
 val VAL  = mk_var("VAL", Type`:word8`);
 
 
- 
+val fmap_update_replace_def = Define `
+    fmap_update_replace (map: 'a |-> 'b) (a,  b) = 
+    case (FLOOKUP map a) of 
+    | NONE  => FUPDATE map (a, b)
+    | SOME v => FUPDATE (map \\  a ) (a, b)`;
+
+val bir_symb_env_update_def = Define `
+    bir_symb_env_update varname vo ty (BEnv env) = 
+    BEnv (fmap_update_replace env (varname, (ty, vo)))`;
 
 val exp0 = ``BStmt_Assign (BVar "SP_EL0" (BType_Imm Bit64)) 
                 (BExp_BinExp BIExp_Minus
