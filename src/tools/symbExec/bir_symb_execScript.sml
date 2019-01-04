@@ -292,19 +292,24 @@ val bir_symb_exec_node_def = Define `
 
 
 (* can't prove termination of this version that computes all branches! *)
-(*
-val bir_symb_exec_node_def = Define `
-    (bir_symb_exec_node (p: 'a bir_program_t) (Leaf st) = 
-        case st.bsst_status of 
-        | BST_Running => 
-            case (bir_symb_exec_label_block p st) of 
-            | [st'] => UnNode (bir_symb_exec_node p (Leaf st')) st
-            | [st'; st''] => 
-                BinNode (bir_symb_exec_node p (Leaf st')) st
-                (bir_symb_exec_node p (Leaf st''))
-            | _ => Leaf st (* Should not happen *)
-        | _ => Leaf st)`;
-            
-*)
 
+val bir_symb_exec_node_def = Define `
+    (bir_symb_exec_node (p: 'a bir_program_t) (Leaf st) (n:num) = 
+    case n of 
+       | 0 => (Leaf st)
+       | _ => 
+        (case st.bsst_status of 
+        | BST_Running => 
+            (case (bir_symb_exec_label_block p st) of 
+            | [st'] => UnNode  (Leaf st') st
+            | [st'; st''] => 
+                BinNode 
+                    (bir_symb_exec_node p (Leaf st') (n-1)) 
+                    st 
+                    (bir_symb_exec_node p(Leaf st'') (n-1)))
+        | BST_Halted _ => Leaf st
+        | BST_Faild => Leaf st           
+        | BST_AssumptionViolated => Leaf st
+        | BST_AssertionViolated => Leaf st
+        | BST_JumpOutside _ => Leaf st))`;
 val _ = export_theory();
