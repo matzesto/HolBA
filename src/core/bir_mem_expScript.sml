@@ -1,3 +1,11 @@
+(* 
+load "wordsTheory";
+load "bitstringTheory";
+load "bir_auxiliaryTheory";
+load "bir_immTheory";
+load "bir_immSyntax";
+ *)
+
 open HolKernel Parse boolLib bossLib;
 open wordsTheory bitstringTheory;
 open bir_auxiliaryTheory bir_immTheory bir_immSyntax;
@@ -418,24 +426,23 @@ SIMP_TAC list_ss [rich_listTheory.count_list_sub1,
 (* bitstring_split *)
 (* =============== *)
 
-val bitstring_split_aux_defn = Hol_defn "bitstring_split_aux"
+val bitstring_split_aux_def = tDefine "bitstring_split_aux"
  `(bitstring_split_aux 0 acc bs = ARB) /\
   (bitstring_split_aux n acc [] = REVERSE acc) /\
   (bitstring_split_aux n acc bs =
      bitstring_split_aux n ((TAKE n bs)::acc) (DROP n bs))`
+  (WF_REL_TAC `measure (\ (_, _, l). LENGTH l)` >> SIMP_TAC list_ss []);
 
-(* Defn.tgoal bitstring_split_aux_defn *)
-val (bitstring_split_aux_def, bitstring_split_aux_ind) = Defn.tstore_defn (bitstring_split_aux_defn,
-  WF_REL_TAC `measure (\ (_, _, l). LENGTH l)` >>
-  SIMP_TAC list_ss []);
+val bitstring_split_aux_ind1 = DB.fetch "bir_mem_exp" "bitstring_split_aux_ind";
 
-val bitstring_split_def = Define `bitstring_split n bs = bitstring_split_aux n [] bs`
+val bitstring_split_def = Define `bitstring_split n bs = bitstring_split_aux n
+[] bs`;
 
 val bitstring_split_aux_REWR1 = SIMP_RULE std_ss [] (prove (``!n (_ : 'a list list) bs.
   (!acc. (n <> 0) ==> (bitstring_split_aux n acc (bs:'a list) =
          (REVERSE acc) ++ (bitstring_split_aux n [] bs)))``,
 
-HO_MATCH_MP_TAC bitstring_split_aux_ind >>
+HO_MATCH_MP_TAC bitstring_split_aux_ind1 >>
 REWRITE_TAC [numTheory.NOT_SUC] >>
 REPEAT STRIP_TAC >| [
   SIMP_TAC list_ss [bitstring_split_aux_def],

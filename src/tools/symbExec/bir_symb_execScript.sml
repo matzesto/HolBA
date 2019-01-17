@@ -201,7 +201,13 @@ val bir_symb_exec_stmt_assign_def = Define `
 
 (* Is there something interesting here? *)
 val bir_symb_exec_stmt_assert_def = Define `
-    bir_symb_exec_stmt_assert ex st = st`;
+    bir_symb_exec_stmt_assert v ex st = 
+    let
+      env_o = bir_symb_env_write v (bir_eval_exp ex st.bsst_environ) st.bsst_environ
+    in 
+      case env_o of 
+      | SOME env => (st with bsst_environ := env)
+      | NONE => bir_symb_state_set_failed st`;
 
 (* Basic Statement execution *)
 val bir_symb_exec_stmtB_def = Define `
@@ -209,8 +215,9 @@ val bir_symb_exec_stmtB_def = Define `
         = bir_symb_exec_stmt_declare (bir_var_name v) (bir_var_type v) st) ∧
     (bir_symb_exec_stmtB (BStmt_Assign v ex) st 
         = bir_symb_exec_stmt_assign v ex st) ∧
+    (* 
     (bir_symb_exec_stmtB (BStmt_Assert ex) st 
-        =  bir_symb_exec_stmt_assert ex st) ∧
+        =  bir_symb_exec_stmt_assert ex st) ∧ *)
     (* Ignore all other statement so far *)
     (bir_symb_exec_stmtB (_)  st  = st)`;
 
@@ -291,10 +298,10 @@ val bir_symb_exec_node_def = Define `
         UnNode (bir_symb_exec_node p tree) st)`;
 
 
-(* can't prove termination of this version that computes all branches! *)
-
-val bir_symb_exec_node_def = Define `
-    (bir_symb_exec_node (p: 'a bir_program_t) (Leaf st) (n:num) = 
+(* Execute n steps  *)
+(* 
+val bir_symb_exec_build_tree_def = Define `
+    (bir_symb_exec_build_tree (p: 'a bir_program_t) (Leaf st) (n:num) = 
     case n of 
        | 0 => (Leaf st)
        | _ => 
@@ -311,5 +318,45 @@ val bir_symb_exec_node_def = Define `
         | BST_Faild => Leaf st           
         | BST_AssumptionViolated => Leaf st
         | BST_AssertionViolated => Leaf st
-        | BST_JumpOutside _ => Leaf st))`;
+        | BST_JumpOutside _ => Leaf st)) ∧ 
+    (bir_symb_exec_build_tree p (BinNode ltree st rtree) n = 
+    case n of 
+       | 0 => (BinNode ltree st rtree)
+       | _ =>  BinNode 
+            (bir_symb_exec_build_tree p ltree (n-1)) st 
+            (bir_symb_exec_build_tree p rtree (n-1))) ∧
+    (bir_symb_exec_build_tree p (UnNode tree st) n = 
+    case n of 
+       | 0 => (UnNode tree st)
+       | _ => UnNode (bir_symb_exec_node p tree (n-1))  st
+    )`;
+ *)
+(* get rid of the three redundatnt base cases *)
+val bir_symb_exec_build_tree_def = Define `
+    (bir_symb_exec_build_tree (p: 'a bir_program_t) tree 0 = tree ) ∧
+    (bir_symb_exec_build_tree (p: 'a bir_program_t) tree (n: num) = 
+        case tree of 
+        | Leaf st =>
+            (case st.bsst_status of 
+             | BST_Running => 
+                (case (bir_symb_exec_label_block p st) of 
+                 | [st'] => 
+                     UnNode  (bir_symb_exec_build_tree p (Leaf st') (n-1)) st
+                 | [st'; st''] => 
+                    BinNode 
+                        (bir_symb_exec_build_tree p (Leaf st') (n-1)) 
+                        st 
+                        (bir_symb_exec_build_tree p(Leaf st'') (n-1)))
+             | BST_Halted _ => Leaf st
+             | BST_Faild => Leaf st           
+             | BST_AssumptionViolated => Leaf st
+             | BST_AssertionViolated => Leaf st
+             | BST_JumpOutside _ => Leaf st)
+             
+         | UnNode tree' st => UnNode (bir_symb_exec_build_tree p tree' (n-1)) st
+         | BinNode ltree st rtree => BinNode
+            (bir_symb_exec_build_tree p ltree (n-1)) st
+            (bir_symb_exec_build_tree p rtree (n-1)))`;
+
+
 val _ = export_theory();
