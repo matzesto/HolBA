@@ -7,7 +7,8 @@ load "bir_symb_execTheory";
  *)
 open bir_expTheory;
 open minimalBinaryTheory;
-open bir_symb_execTheory bir_symb_envTheory;
+open bir_symb_execTheory 
+open bir_symb_envTheory;
 open bir_valuesTheory;
 open bir_immTheory;
 open bir_mem_expTheory;
@@ -18,6 +19,36 @@ open bitstringTheory;
 val _ = new_theory "test";
 
 (* Initialize all the Registers / Variables we have *)
+
+fun generate_symbolic_register (name: string) = 
+  let 
+    val reg_0 = mk_var(name^"_0", Type `:word8`)
+    val reg_1 = mk_var(name^"_1", Type `:word8`)
+    val reg_2 = mk_var(name^"_2", Type `:word8`)
+    val reg_3 = mk_var(name^"_3", Type `:word8`)
+  in 
+    (reg_0, reg_1, reg_2, reg_3)
+  end;
+
+bir_symb_init_env_def;
+
+fun init_env () = 
+    
+
+fun test () = 
+  let val (a_0, a_1, a_2, a_3) = generate_symbolic_register("R0_")
+  in type_of a_0
+  end;
+
+fun generate_symbol () = 
+  let val start = 0 in
+    mk_var("R0" ^ Int.toString(start +1), Type `:word8`)
+  end;
+
+
+generate_symbol();
+
+
 val R0 = mk_var("R0",   Type `:word64`);
 val R1 = mk_var("R1",   Type `:word64`);
 val R2 = mk_var("R2",   Type `:word64`);
@@ -53,6 +84,60 @@ val fmap_update_replace_def = Define `
 val bir_symb_env_update_def = Define `
     bir_symb_env_update varname vo ty (BEnv env) = 
     BEnv (fmap_update_replace env (varname, (ty, vo)))`;
+
+
+
+fun init_env (name : string) env = 
+    let 
+      val (r_0, r_1, r_2, r_3) = generate_symbolic_register(name) in
+    (rhs o concl o EVAL)
+    ``
+    bir_symb_env_update 
+        (name^"_0") (SOME (BVal_Imm (Imm8 ^r_0))) (BType_Imm Bit8) (
+    bir_symb_env_update 
+        (name^"_1") (SOME (BVal_Imm (Imm8 ^r_1))) (BType_Imm Bit8) (
+    bir_symb_env_update 
+        (name^"_2") (SOME (BVal_Imm (Imm8 ^r_2))) (BType_Imm Bit8) (
+    bir_symb_env_update 
+        (name^"_3") (SOME (BVal_Imm (Imm8 ^r_3))) (BType_Imm Bit8) ^env)))
+    ``
+  end;
+
+
+fun init_env (r_0, r_1, r_2, r_3) (name : string) env = 
+    (rhs o concl o EVAL)
+    ``
+    bir_symb_env_update 
+        (name) (SOME (BVal_Imm (Imm8 ^r_0))) (BType_Imm Bit8) (
+    bir_symb_env_update 
+        (name^"_1") (SOME (BVal_Imm (Imm8 ^r_1))) (BType_Imm Bit8) (
+    bir_symb_env_update 
+        (name^"_2") (SOME (BVal_Imm (Imm8 ^r_2))) (BType_Imm Bit8) (
+    bir_symb_env_update 
+        (name^"_3") (SOME (BVal_Imm (Imm8 ^r_3))) (BType_Imm Bit8) ^env)))
+    ``;
+
+fun init [] (env: term) = env
+  | init (reg::regs : string list) env = init regs init_env reg env
+
+  
+init_env();
+
+STR_def;
+R0_0
+0_R0
+ EVAL ``STRING c ""``;
+EVAL ``STRING (#"0")  (STRING (#"_") ("FOO": string))``;
+EVAL `` "FOO" ++ "R0"``;
+
+val str_con_def = Define ``
+    str_con (s1: string) (s2: string) = 
+
+
+EVAL ``strcat "f" "g"``;
+
+
+
 
 val exp0 = ``BStmt_Assign (BVar "SP_EL0" (BType_Imm Bit64)) 
                 (BExp_BinExp BIExp_Minus
@@ -91,6 +176,8 @@ val assert_exp =
            (BExp_Den (BVar "R0" (BType_Imm Bit64)))
            Bit32))]``;
 
+bir_symb_init_env_def;
+
 
 (* TEST *)
 fun init_env () = 
@@ -125,7 +212,7 @@ EVAL ``bitstring_split_aux (8: num) [] [F;F;F;F;F;F;F;F;T;T;T;T;T;T;T;T]``;
 EVAL ``bir_symb_exec_stmtB_list ^minimal_prog ^state ^assert_exp``;
 EVAL ``bir_symb_exec_label_block ^minimal_prog ^state``;
 
-EVAL ``bir_symb_exec_label_block ^minimal_program ^state``;
+EVAL ``bir_symb_exec_label_block ^minimal_prog ^state``;
 EVAL ``bir_symb_exec_build_tree ^minimal_prog (Leaf ^state) 5``; 
 
 EVAL ``bir_symb_exec_first_blk ^minimal_prog ^state``;
