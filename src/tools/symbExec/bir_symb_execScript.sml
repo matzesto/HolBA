@@ -4,6 +4,7 @@ app load ["HolKernel", "Parse", "boolLib" ,"bossLib"];
 app load ["wordsTheory", "bitstringTheory"];
 app load ["bir_auxiliaryTheory", "bir_immTheory", "bir_valuesTheory"];
 app load ["bir_imm_expTheory", "bir_mem_expTheory",  "bir_symb_envTheory"];
+app load ["bir_symb_memTheory"];
 app load ["bir_programTheory", "bir_expTheory", "bir_envTheory"];
 app load ["llistTheory", "wordsLib"];
 *)
@@ -77,7 +78,7 @@ val bir_symb_eval_exp_def = Define `
     (bir_symb_eval_exp (BExp_Den v ) env = bir_env_read v env) ∧
     
     (bir_symb_eval_exp (BExp_Cast ct e ty) env = (
-        bir_symb_eval_cast ct (bir_symb_eval e env) ty )) ∧
+        bir_symb_eval_cast ct (bir_symb_eval_exp e env) ty )) ∧
     
     (bir_symb_eval_exp (BExp_UnaryExp et e) env = (
         bir_symb_eval_unary_exp et (bir_symb_eval_exp  env))) ∧
@@ -103,7 +104,7 @@ val bir_symb_eval_exp_def = Define `
     (bir_symb_eval_exp (BExp_Store mem_e a_e en v_e) env = 
         bir_symb_eval_store (bir_symb_eval_exp mem_e env) 
             (bir_symb_eval_exp a_e env) en (bir_symb_eval_exp v_e env))`;
- *)
+*)
 (* ------------------------------------------------------------------------- *)
 (* Symbolic Execution Semantics                                              *)
 (* ------------------------------------------------------------------------- *)
