@@ -15,21 +15,29 @@ open wordsTheory;
 open bir_mem_expTheory;
 
 val _ = new_theory "bir_symb_mem";
-(*
-(* Symbolic Memory maps addresses to Expressions *)
-val _ = Datatype `bir_symb_mem_t = 
-    SymbMem (bir_exp_t |-> bir_exp_t)`;
 
-val bir_symb_mem_lookup_def = Define `
-    bir_symb_mem_lookup (SymbMem mem) ex = FLOOKUP mem ex`;
 
-(* Read Expression ex of Type ty from Memory mem *)
-val bir_read_from_mem_def = Define `
-    bir_read_from_mem (SymbMem mem) ex  = 
-    case bir_symb_mem_lookup mem ex of
-      NONE => Symbolic (BExp_Const (Imm64 1w))
-    | SOME e => e`;
+
+(* 
+ * split words to bytes:
+ * for each byte in r:
+ *  currByte = r % 256
+ *  r = r / 256
  *)
+
+val bir_symb_split_def = Define`
+    (bir_symb_split w (0: num) ls = ls) ∧
+    (bir_symb_split w n ls = bir_symb_split (w DIV 256) (n-1) ((w MOD 256) :: ls))`;
+
+val bir_symb_mem_split_def = Define `
+    (bir_symb_mem_split (BVal_Imm (Imm8 w)) = [w2n w]) ∧
+    (bir_symb_mem_split (BVal_Imm (Imm16 w)) = bir_symb_split (w2n w) 2 [] ) /\
+    (bir_symb_mem_split (BVal_Imm (Imm64 w)) = bir_symb_split (w2n w) 8 [] )`;
+ 
+(* Problem: 
+ * SMT-Solver can only do arithmetic on reals and ints 
+ *)
+
 
 
 (* This is the function we need to implement *)
