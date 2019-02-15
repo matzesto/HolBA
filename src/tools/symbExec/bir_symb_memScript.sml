@@ -18,6 +18,10 @@ open bir_mem_expTheory;
 val _ = new_theory "bir_symb_mem";
 
 
+val _ = Datatype `bir_symb_mem_t =
+   BVal_SymbUnknown
+ | BVal_SymbMem bir_immtype_t bir_immtype_t (word64 -> word8)`;
+
 (* ----------------------------------------------- *)
 (* Memory Store                                    *)
 (* ----------------------------------------------- *)
@@ -52,8 +56,8 @@ val bir_symb_store_in_mem_def = Define `
             let vs' = 
                 (* It's probably the wrong way round. its always the wrong way
                  * round *)
-                (case en of BEnd_LittleEndian => SOME (REVERSE vs)
-                    | BEnd_BigEndian => SOME vs
+                (case en of BEnd_LittleEndian => SOME  vs
+                    | BEnd_BigEndian => SOME (REVERSE vs)
                     | BEnd_NoEndian => NONE) in (* TODO No Endian! *)
                 case  vs' of
                      NONE => NONE 
@@ -104,5 +108,29 @@ val bir_symb_load_from_mem_def = Define `
                 bir_symb_compute_word_from_bytes vs'' result_ty
        | _ => NONE`;
 
+
+(* -------------------------------------------------------------- *)
+(* Evaluate Memory Expressions                                    *)
+(* Only difference to concrete memory evaluation:                 *)
+(* Use symbolic memory instead of concrete :-)                    *)
+(* -------------------------------------------------------------- *)
+
+val bir_symb_eval_store_def = Define `
+    (bir_symb_eval_store (BVal_SymbMem ta tv s_mmap)  (BVal_Imm a) en (BVal_Imm v) = 
+     if type_of_bir_imm a = ta then 
+       case bir_symb_store_in_mem tv ta v s_mmap en a of 
+        | NONE => BVal_SymbUnknown
+        | SOME s_mmap' => (BVal_SymbMem ta tv s_mmap')
+     else BVal_SymbUnknown) ∧
+     (bir_symb_eval_store _ _ _ _  = BVal_SymbUnknown)`;
+
+val bir_symb_eval_load_def = Define`
+    (bir_symb_eval_load (BVal_SymbMem ta tv s_mmap) (BVal_Imm a) en t =
+     if type_of_bir_imm a = ta then 
+       case bir_symb_load_from_mem tv t ta s_mmap en a of 
+        | NONE => BVal_Unknown
+        | SOME i => BVal_Imm i
+     else BVal_Unknown) ∧
+     (bir_symb_eval_load _ _ _ _ = BVal_Unknown)`; 
 
 val _ = export_theory();

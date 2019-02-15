@@ -35,6 +35,7 @@ val _ = new_theory "bir_symb_exec";
  * pred: expression representing the path condition
  * bsst_status : a status bit (mainly used for errors) 
  * *)
+
 val _ = Datatype `bir_symb_state_t = <|
   bsst_pc           : bir_programcounter_t; 
   bsst_environ      : bir_var_environment_t; (* Mapping Vars to Exps *)
@@ -55,7 +56,7 @@ val CONJ_def = Define `
 val bir_symb_state_init_def = Define `bir_symb_state_init p env = <|
     bsst_pc         := bir_pc_first p;
     bsst_environ    := env;
-    bsst_pred       := T;  (* Invent real Booleans later on *)
+    bsst_pred       := T;
     bsst_status     := BST_Running |>`;
 
 
@@ -78,25 +79,29 @@ val bir_symb_eval_exp_def = Define `
     (bir_symb_eval_exp (BExp_Den v ) env = bir_env_read v env) ∧
     
     (bir_symb_eval_exp (BExp_Cast ct e ty) env = (
-        bir_symb_eval_cast ct (bir_symb_eval_exp e env) ty )) ∧
+        bir_eval_cast ct (bir_symb_eval_exp e env) ty )) ∧
     
     (bir_symb_eval_exp (BExp_UnaryExp et e) env = (
-        bir_symb_eval_unary_exp et (bir_symb_eval_exp  env))) ∧
-    
-    (bir_symb_eval_exp (BExp_BinPred pt e1 e2) env = (
-        bir_symb_eval_bin_pred pt 
-            (bir_symb_eval_exp e1 env) 
-            (bir_symb_eval_exp e2 env)) ∧
+        bir_eval_unary_exp et (bir_symb_eval_exp e env))) ∧
 
-    (bir_symb_eval_exp (BExp_MemEq e1 e1) env = 
-        bir_symb_eval_memeq 
+    (* This is interesting, since we cannot deduce a truth value from symbol *)
+    (bir_symb_eval_exp (BExp_BinPred pt e1 e2) env = (
+        bir_eval_bin_pred pt 
+            (bir_symb_eval_exp e1 env) 
+            (bir_symb_eval_exp e2 env))) ∧
+    
+    (* Symbolic memory eqaulity might get ugly *)
+    (bir_symb_eval_exp (BExp_MemEq e1 e2) env = 
+        bir_eval_memeq 
             (bir_symb_eval_exp e1 env) (bir_symb_eval_exp e2 env)) ∧
 
+    (* Take care about casting: Imm1 required here *)
     (bir_symb_eval_exp (BExp_IfThenElse c et ef) env = 
-        bir_symb_eval_ifthenelse 
-            (bir_symb_eval_exp c enc) 
-                (bir_symb_evl_exp et env) (bir_symb_eval_exp ef env)) ∧
+        bir_eval_ifthenelse 
+            (bir_symb_eval_exp c env) 
+                (bir_symb_eval_exp et env) (bir_symb_eval_exp ef env)) ∧
 
+    (* Symbolic memory representation differes from concrete *)
     (bir_symb_eval_exp (BExp_Load mem_e a_e en ty) env = 
         bir_symb_eval_load 
             (bir_symb_eval_exp mem_e env) (bir_symb_eval_exp) en ty) ∧
@@ -200,7 +205,7 @@ val bir_symb_exec_stmt_assign_def = Define `
     | SOME env => (st with bsst_environ := env)
     | NONE => st with bsst_status := BST_Failed`;
 
-(* Is there something interesting here? *)
+(* Is there something interesting here? TODO: add assertion to some predicate *)
 val bir_symb_exec_stmt_assert_def = Define `
     bir_symb_exec_stmt_assert v ex st = 
     let
