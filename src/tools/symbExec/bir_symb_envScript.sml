@@ -17,52 +17,30 @@ open listTheory;
 
 val _ = new_theory "bir_symb_env";
 
-val bir_symb_init_env_def = Define`
-    bir_symb_init_env
-        (* Registers *)
-        (R0, R1, R2, R3, R4, R5, R6, R7, 
-         R8, R9, R10, R11, R12, LR, SP_EL0, SP_process)
-        (* Flags *)
-        (ProcState_N, ProcState_Z, ProcState_C, ProcState_V)
-        (* Memory *)
-        (ADDR, VAL)
-        = 
-    BEnv (FEMPTY 
-        |+ ("R0", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R0))))
-        |+ ("R1", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R1))))
-        |+ ("R2", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R2))))
-        |+ ("R3", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R3))))
-        |+ ("R4", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R4))))
-        |+ ("R5", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R5))))
-        |+ ("R6", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R6))))
-        |+ ("R7", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R7))))
-        |+ ("R8", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R8))))
-        |+ ("R9", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R9))))
-        |+ ("R10", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R10))))
-        |+ ("R11", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R11))))
-        |+ ("R12", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 R12))))
-        |+ ("LR", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 LR))))
-        |+ ("SP_EL0", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 SP_EL0))))
-        |+ ("SP_process", (BType_Imm Bit64, SOME (BVal_Imm(Imm64 SP_process))))
-        |+ ("ProcState_N", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_N))))
-        |+ ("ProcState_Z", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_Z))))
-        |+ ("ProcState_C", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_C))))
-        |+ ("ProcState_V", (BType_Bool, SOME (BVal_Imm (Imm1 ProcState_V))))
-        |+ ("MEM", (BType_Mem Bit64 Bit8,  SOME (BVal_Mem 
-            (type_of_bir_imm (Imm64 ADDR)) (type_of_bir_imm (Imm8 VAL)) (K 0) )))
-        )`;
-
+val _ = Datatype `bir_symb_var_environment_t = 
+  BEnv (string |-> (bir_type_t # (bir_exp_t)))`;
+  
 
 (* -----------------------------------------------------*)
-(* Symbolic environment is the same as the concrete     *)
-(* However, we these functions ease the implemenetation *)
+(* Symbolic environment maps Vars to expressions        *)
 (* ---------------------------------------------------- *)
+
 
 val fmap_update_replace_def = Define `
     fmap_update_replace (map: 'a |-> 'b) (a,  b) = 
     case (FLOOKUP map a) of 
     | NONE  => FUPDATE map (a, b)
     | SOME v => FUPDATE (map \\  a ) (a, b)`;
+
+
+val bir_symb_env_read_def  = Define `
+    (bir_symb_env_read v (BEnv env) = 
+        case (FLOOKUP  env (bir_var_name v)) of 
+        | NONE => ARB
+        | SOME (ty, e) => e)`;
+
+val bir_symb_env_read_def = Define `
+    bir_symb_env_read v (BEnv env) = 
 
 val bir_symb_env_update_def = Define `
     bir_symb_env_update varname vo ty (BEnv env) = 
