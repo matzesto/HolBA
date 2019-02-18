@@ -39,7 +39,7 @@ val _ = new_theory "bir_symb_exec";
 val _ = Datatype `bir_symb_state_t = <|
   bsst_pc           : bir_programcounter_t; 
   bsst_environ      : bir_var_environment_t; (* Mapping Vars to Exps *)
-  bsst_pred         : bool; (* Path predicate *)
+  bsst_pred         : bir_exp_t; (* Path predicate *)
   bsst_status       : bir_status_t;
  |>`;
     
@@ -72,11 +72,55 @@ val bir_symb_state_is_terminated_def = Define `
 (* Eval certain expressions  This is TODO                                    *)
 (* However, should be mostly the same as concrete evaluation                 *)        
 (* ------------------------------------------------------------------------- *)
-(*
+
+val bir_symb_eval_cast_def =  Define `
+    bir_symb_eval_cast ct e ty = BExp_Cast ct e ty`;
+
+val bir_symb_eval_unary_def = Define `
+    bir_symb_eval_unary et e = BExp_UnaryExp et e`;
+
+val bir_symb_eval_binary_def = Define `
+    bir_symb_eval_binary pt e1 e2 = BExp_BinExp pt e1 e2`;
+
+val bir_symb_eval_memeq_def = Define `
+    bir_symb_eval_memeq e1 e2 = BExp_MemEq e1 e2`;
+
+val bir_symb_eval_ite_def = Define `
+    bir_symb_eval_ite c et ef = BExp_IfThenElse c et ef`
+
+
+bir_eval_exp_def;
 val bir_symb_eval_exp_def = Define `
-    (bir_symb_eval_exp (BExp_Const n) env = BVal_Imm n) /\
+    (bir_symb_eval_exp (BExp_Const n) env = BExp_Const n) /\
+    (bir_symb_eval_exp (BExp_Den v) env = bir_symb_env_read v env) ∧ 
+    (bir_symb_eval_exp (BExp_Cast ct e ty) env = 
+        bir_symb_eval_cast ct (bir_symb_eval_exp e env) ty) ∧
+    (bir_symb_eval_exp (BExp_UnaryExp et e) env =
+        bir_symb_eval_unary et (bir_symb_eval_exp e env)) ∧
+    (bir_symb_eval_exp (BExp_BinExp pt e1 e2) env = 
+        bir_symb_eval_binary pt 
+            (bir_symb_eval_exp e1 env) (bir_symb_eval_exp e2 env)) ∧
+    (bir_symb_eval_exp (BExp_MemEq e1 e2) env = 
+        bir_symb_eval_memeq
+            (bir_symb_eval_exp e1 env) (bir_symb_eval_exp e2 env)) ∧
+    (bir_symb_eval_exp (BExp_IfThenElse c et ef) env = 
+        bir_symb_eval_ite 
+            (bir_symb_eval_exp c env) 
+            (bir_symb_eval_exp et env) (bir_symb_eval_exp ef env)) ∧
+    (bir_symb_eval_exp (BExp_Load mem_e a_e en ty) env =
+        bir_symb_eval_load 
+            (bir_symb_eval_exp mem_e env) 
+            (bir_symb_eval_exp a_e env) en ty) ∧
+    (bir_symb_eval_exp (BExp_Store mem_e a_e en v_e) env = 
+        bir_symb_eval_store (bir_symb_eval_exp mem_e env)
+            (bir_symb_eval_exp a_e env) en (bir_symb_eval_exp v_e env))`
+
+
+
+val bir_symb_eval_exp_def = Define `
+    (bir_symb_eval_exp (BExp_Const n) env = BExp_Const  n) /\
     
-    (bir_symb_eval_exp (BExp_Den v ) env = bir_env_read v env) ∧
+    (bir_symb_eval_exp (BExp_Den v ) env = bir_symb_env_read v env) ∧
     
     (bir_symb_eval_exp (BExp_Cast ct e ty) env = (
         bir_eval_cast ct (bir_symb_eval_exp e env) ty )) ∧
@@ -109,7 +153,7 @@ val bir_symb_eval_exp_def = Define `
     (bir_symb_eval_exp (BExp_Store mem_e a_e en v_e) env = 
         bir_symb_eval_store (bir_symb_eval_exp mem_e env) 
             (bir_symb_eval_exp a_e env) en (bir_symb_eval_exp v_e env))`;
-*)
+
 (* ------------------------------------------------------------------------- *)
 (* Symbolic Execution Semantics                                              *)
 (* ------------------------------------------------------------------------- *)
