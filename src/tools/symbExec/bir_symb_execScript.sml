@@ -47,20 +47,21 @@ val _ = Datatype `bir_symb_state_t = <|
 val CONJ_def = Define `
     CONJ a b = a ∧ b`;
 
-(* Exprssion that always evlauate to True *)
+(* Expression that always evaluates to True *)
 val TRUE_EXP_def = Define `
     TRUE_EXP = BExp_BinPred BIExp_Equal 
         (BExp_Const (Imm1 1w)) (BExp_Const (Imm1 1w))`;
+
 (* ------------------------------------------------------------------------- *)
 (* Symbolic State                                                            *)
 (* ------------------------------------------------------------------------- *)
+
 (* Initially, Environment is empty and predicate set to True *)
 val bir_symb_state_init_def = Define `bir_symb_state_init p env = <|
     bsst_pc         := bir_pc_first p;
     bsst_environ    := env;
     bsst_pred       := TRUE_EXP;
     bsst_status     := BST_Running |>`;
-
 
 val bir_symb_state_set_failed_def = Define `
     bir_symb_state_set_failed st = 
@@ -71,8 +72,8 @@ val bir_symb_state_is_terminated_def = Define `
         if st.bsst_status = BST_Running then F else T`;
 
 (* ------------------------------------------------------------------------- *)
-(* Eval certain expressions  This is TODO                                    *)
-(* However, should be mostly the same as concrete evaluation                 *)        
+(* Eval certain expressions                                                  *)
+(* Different from concrete Execution, this returns a BIR Expression          *)        
 (* ------------------------------------------------------------------------- *)
 
 val bir_symb_eval_cast_def =  Define `
@@ -176,8 +177,6 @@ val bir_symb_exec_stmt_halt_def = Define `
 (* Conditional, so "fork":
  * Return a list containing of two states with 
  * updated path predicate accordingly *)
-
-
 val bir_symb_exec_stmt_cjmp_def = Define `
     bir_symb_exec_stmt_cjmp p (BExp_Den (BVar reg BType_Bool)) l1 l2 st = 
     case (bir_symb_env_lookup reg st.bsst_environ) of 
