@@ -21,36 +21,14 @@ open stringLib;
 
 val _ = new_theory "test";
 
-
-(* auxiliary operations on finite maps *)
-val fmap_update_replace_def = Define `
-    fmap_update_replace (map: 'a |-> 'b) (a,  b) = 
-    case (FLOOKUP map a) of 
-    | NONE  => FUPDATE map (a, b)
-    | SOME v => FUPDATE (map \\  a ) (a, b)`;
-
-val bir_symb_env_update_def = Define `
-    bir_symb_env_update varname vo ty (BEnv env) = 
-    BEnv (fmap_update_replace env (varname, (ty, vo)))`;
  
  
 (* Initialize all the Registers / Variables we have *)
 
-
 (* Functions to generate symolbic registers of _64 _8 and _1 bits *)
 fun generate_symbolic_register_64 (name: string) = 
-  let 
-    val reg_0 = mk_var(name^"_0", Type `:word8`)
-    val reg_1 = mk_var(name^"_1", Type `:word8`)
-    val reg_2 = mk_var(name^"_2", Type `:word8`)
-    val reg_3 = mk_var(name^"_3", Type `:word8`)
-    val reg_4 = mk_var(name^"_4", Type `:word8`)
-    val reg_5 = mk_var(name^"_5", Type `:word8`)
-    val reg_6 = mk_var(name^"_6", Type `:word8`)
-    val reg_7 = mk_var(name^"_7", Type `:word8`)
-  in 
-    (reg_0, reg_1, reg_2, reg_3,
-     reg_4, reg_5, reg_6, reg_7)
+  let val _ = print ("Iregister\n") in
+  mk_var(name, Type `:word64`)
   end;
 
 fun generate_symbolic_register_1 (name : string) = 
@@ -63,29 +41,13 @@ fun generate_symbolic_register_8 (name : string) =
 (* Add symbolic registers byte-wise in environment *)
 fun add_symbolic_register_to_env_64 name env = 
     let 
-        val (r_0, r_1, r_2, r_3, r_4, r_5, r_6, r_7) =
+        val r =
           generate_symbolic_register_64 name
         val name_hol = fromMLstring name 
     in
-        (rhs o concl o EVAL)
-    ``
-        bir_symb_env_update 
-            (^name_hol ++ "_0") (SOME (BVal_Imm (Imm8 ^r_0))) (BType_Imm Bit8) (
-        bir_symb_env_update 
-            (^name_hol ++ "_1") (SOME (BVal_Imm (Imm8 ^r_1))) (BType_Imm Bit8) (
-        bir_symb_env_update 
-            (^name_hol ++ "_2") (SOME (BVal_Imm (Imm8 ^r_2))) (BType_Imm Bit8) (
-        bir_symb_env_update 
-            (^name_hol ++ "_3") (SOME (BVal_Imm (Imm8 ^r_3))) (BType_Imm Bit8) (
-        bir_symb_env_update 
-            (^name_hol ++ "_4") (SOME (BVal_Imm (Imm8 ^r_4))) (BType_Imm Bit8) (
-        bir_symb_env_update 
-            (^name_hol ++ "_5") (SOME (BVal_Imm (Imm8 ^r_5))) (BType_Imm Bit8) (
-        bir_symb_env_update 
-            (^name_hol ++ "_6") (SOME (BVal_Imm (Imm8 ^r_6))) (BType_Imm Bit8) (
-        bir_symb_env_update 
-            (^name_hol ++ "_7") (SOME (BVal_Imm (Imm8 ^r_7))) (BType_Imm Bit8) 
-            ^env )))))))
+        (rhs o concl o EVAL) 
+    `` bir_symb_env_update 
+    ^name_hol (BExp_Const (Imm64 ^r)) (BType_Imm Bit64) ^env
     ``
   end;
 
@@ -96,7 +58,7 @@ fun add_symbolic_register_to_env_8 name env =
     in
       (rhs o concl o EVAL)
     `` bir_symb_env_update 
-        ^name_hol (SOME (BVAL_Imm (Imm8 ^r))) (BType_Imm Bit8) ^env
+        ^name_hol (BExp_Const (Imm8 ^r)) (BType_Imm Bit8) ^env
     ``
     end;
 
@@ -108,9 +70,19 @@ fun add_symbolic_register_to_env_1 name env =
       (rhs o concl o EVAL)
     ``
       bir_symb_env_update
-        ^name_hol (SOME (BVAL_Imm (Imm1 ^r))) (BType_Imm Bit1) ^env
+        ^name_hol (BExp_Const  (Imm1 ^r)) (BType_Imm Bit1) ^env
     ``
     end;
+
+fun add_memory_to_env env = 
+  let val mem = fromMLstring "MEM"
+  in
+    (rhs o concl o EVAL) 
+    ``
+    bir_symb_env_update 
+    ^mem (BExp_Den (BVar ^mem (BType_Mem Bit64 Bit8))) (BType_Mem Bit64 Bit8) ^env
+    ``
+  end;
 
 
 fun add_registers_to_env_64 [] env = env
@@ -140,15 +112,15 @@ fun init_env () =
         "ProcState_N", "ProcState_Z",
         "ProcState_C", "ProcState_V" ]
     in
-      let 
+      let
         val e = add_registers_to_env_64 reg_list_64 ``BEnv FEMPTY`` 
       in 
         let 
           val ee =  add_registers_to_env_8 reg_list_8 e 
-        in 
-          add_registers_to_env_1 reg_list_1 ee
+        in add_memory_to_env (
+          add_registers_to_env_1 reg_list_1 ee)
         end
       end
     end;
-
+    
 val _ = export_theory();
