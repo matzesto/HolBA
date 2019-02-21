@@ -1,3 +1,5 @@
+load "bir"
+
 open HolKernel;
 (*
 load "bir_expTheory";
@@ -52,6 +54,29 @@ val minimal_prog = ((snd o dest_comb o concl) minimal_arm8_THM);
 val env = init_env();
 val state = (rhs o concl o EVAL) ``bir_symb_state_init ^minimal_prog ^env``;
 
-EVAL ``bir_symb_exec_first_blk ^minimal_prog ^state``;
+(* This functions shows how to execute programs (or BBs)
+ *
+ * I have no idea how to import code, so please make sure polyML knows 
+ * the method "init_env" from bir_symb_init_envScript.sml" *)
+fun exec () = 
+    let 
+      val minimal_prog = ((snd o dest_comb o concl) minimal_arm8_THM)
+      val env = init_env  () in
+    let 
+      val state = (rhs o concl o EVAL) ``bir_symb_state_init ^minimal_prog ^env``
+    in
+      let 
+        val st = 
+        (rhs o concl o EVAL) 
+        ``HD (bir_symb_exec_label_block ^minimal_prog ^state)``
+      in 
+        (rhs o concl o EVAL)
+        ``bir_symb_exec_label_block ^minimal_prog ^st``
+      end
+    end
+    end;
+
+val e = exec ();
+
 
 val _ = export_theory(;
