@@ -24,9 +24,7 @@ open stringLib;
 
 (* Functions to generate symolbic registers of _64 _8 and _1 bits *)
 fun generate_symbolic_register_64 (name: string) = 
-  let val _ = print ("Iregister\n") in
-  mk_var(name, Type `:word64`)
-  end;
+  mk_var(name, Type `:word64`);
 
 fun generate_symbolic_register_1 (name : string) = 
   mk_var(name, Type `:word1`);
