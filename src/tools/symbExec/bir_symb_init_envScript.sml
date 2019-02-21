@@ -19,9 +19,6 @@ open finite_mapTheory;
 open bitstringTheory;
 open stringLib;
 
-val _ = new_theory "test";
-
- 
  
 (* Initialize all the Registers / Variables we have *)
 
@@ -122,5 +119,3 @@ fun init_env () =
         end
       end
     end;
-    
-val _ = export_theory();
