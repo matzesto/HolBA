@@ -4,7 +4,6 @@ app load ["HolKernel", "Parse", "boolLib" ,"bossLib"];
 app load ["wordsTheory", "bitstringTheory"];
 app load ["bir_auxiliaryTheory", "bir_immTheory", "bir_valuesTheory"];
 app load ["bir_imm_expTheory", "bir_mem_expTheory",  "bir_symb_envTheory"];
-app load ["bir_symb_memTheory"];
 app load ["bir_programTheory", "bir_expTheory", "bir_envTheory"];
 app load ["llistTheory", "wordsLib"];
 *)
@@ -177,6 +176,8 @@ val bir_symb_exec_stmt_halt_def = Define `
 (* Conditional, so "fork":
  * Return a list containing of two states with 
  * updated path predicate accordingly *)
+
+(* )
 val bir_symb_exec_stmt_cjmp_def = Define `
     bir_symb_exec_stmt_cjmp p (BExp_Den (BVar reg BType_Bool)) l1 l2 st = 
     case (bir_symb_env_lookup reg st.bsst_environ) of 
@@ -184,19 +185,29 @@ val bir_symb_exec_stmt_cjmp_def = Define `
         let st_true  = bir_symb_exec_stmt_jmp p l1 st in
         let st_false = bir_symb_exec_stmt_jmp p l2 st in
         [
-        st_true with bsst_pred := BExp_BinExp BIExp_And jmp_exp st.bsst_pred;
+        st_true with bsst_pred := (BExp_BinExp BIExp_And jmp_exp st.bsst_pred);
         st_false with bsst_pred := 
-            BExp_BinExp BIExp_And (BExp_UnaryExp BIExp_Not jmp_exp) st.bsst_pred
-        ]
+            (BExp_BinExp BIExp_And (BExp_UnaryExp BIExp_Not jmp_exp) st.bsst_pred)
+        ] 
     | NONE => [st with bsst_status := BST_Failed]`;
+ *)
+
+(* Switch to a purely expressional conditional jump *)
+val bir_symb_stmt_cjmp_def = Define `
+    bir_symb_exec_stmt_cjmp p ex l1 l2 st = 
+    let st_true = bir_symb_exec_stmt_jmp p l1 st in
+    let st_false = bir_symb_exec_stmt_jmp p l2 st in
+    [   st_true with bsst_pred := (BExp_BinExp BIExp_And ex st.bsst_pred);
+        st_false with bsst_pred := (BExp_BinExp BIExp_And (BExp_UnaryExp BIExp_Not ex) st.bsst_pred)
+    ]`;
 
 (* Execute "End" (Jump/Halt) Statement *)
 val bir_symb_exec_stmtE_def = Define `
     (bir_symb_exec_stmtE p (BStmt_Jmp l) st = [bir_symb_exec_stmt_jmp p l st]) /\ 
-    (bir_symb_exec_stmtE p (BStmt_CJmp e l1 l2 ) st =
-         bir_symb_exec_stmt_cjmp p e l1 l2 st ) /\
+    (bir_symb_exec_stmtE p (BStmt_CJmp ex l1 l2 ) st =
+         bir_symb_exec_stmt_cjmp p ex l1 l2 st ) /\
     (bir_symb_exec_stmtE p (BStmt_Halt ex) st = 
-    [st with bsst_status := BST_Failed])`;
+    [st with bsst_status := BST_Halted (BVal_Imm (Imm1 1w))])`;
     (* )[bir_symb_exec_stmt_halt ex st])`;  <-- Halt expects immediate !*)
 
 

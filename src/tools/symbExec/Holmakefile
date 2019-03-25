@@ -1,4 +1,4 @@
-INCLUDES = ../../core ../../core-props ../l3 \
+INCLUDES = ../../core ../../core-props ../l3 examples/minimal\
    $(HOLDIR)/examples/l3-machine-code/common \
    $(HOLDIR)/examples/l3-machine-code/arm8/model \
    $(HOLDIR)/examples/l3-machine-code/arm8/step \

@@ -19,7 +19,9 @@ open finite_mapTheory;
 open bitstringTheory;
 open stringLib;
 
- 
+
+structure bir_symb_init_envLib = 
+struct
 (* Initialize all the Registers / Variables we have *)
 
 (* Functions to generate symolbic registers of _64 _8 and _1 bits *)
@@ -117,3 +119,4 @@ fun init_env () =
         end
       end
     end;
+end;
